@@ -274,7 +274,7 @@ def apply_pass(message):
         user_info = [message.chat.id, this_user_token, int(time.time()), 86400]
         if message.chat.id in db:
             info = db.get_info(message.chat.id)
-            start_thread(user_info, first_delay=info[2] + info[3])
+            start_thread(user_info, first_delay=time.time() - info[2] - info[3])
             db.remove(message.chat.id)
         else:
             start_thread(user_info)
