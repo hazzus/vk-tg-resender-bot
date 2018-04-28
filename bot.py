@@ -8,11 +8,11 @@ from datetime import datetime
 
 'Constants and settings'
 
-bot_version = '1.3'
+bot_version = '2.0b'
 CLIENT_ID = 6004708
 V = '5.74'
-# TOKEN = '....' # ORIGIGNAL
-TOKEN = '....'  # TEST
+TOKEN = '...'
+
 '''
 telebot.apihelper.proxy = {
     'https': 'socks5://52.169.8.120:1080',
@@ -117,10 +117,11 @@ class ReceiverThread(Thread):
         return result
 
     def parse_message(self, mes):
+        # TODO id chat/user
         text = ''
-        text += ('<i>' + mes[u'title'] + '</i>\n') if ('title' in mes and bool(mes['title'])) else ''
+        text += ('<i>' + mes[u'title'] + '</i> (chat_id:' + str(mes['chat_id']) + ')\n') if ('chat_id' in mes) else ''
         timestamp = datetime.fromtimestamp(mes[u'date'])
-        text += '<b>' + self.parse_username(mes['user_id']) + '</b>'
+        text += '<b>' + self.parse_username(mes['user_id']) + '</b> (user_id:' + str(mes['user_id']) + ')'
         text += '\n' + '[' + str(timestamp) + ']' + ':\n'
         time.sleep(0.25)
 
@@ -181,6 +182,15 @@ class ReceiverThread(Thread):
 
     def kill(self):
         self.killed = True
+
+    def send(self, to_id='', chat_id='', message=''):
+        try:
+            if len(chat_id) > 0:
+                self.api.messages.send(chat_id=chat_id, message=message, v=V)
+            else:
+                self.api.messages.send(user_id=to_id, message=message, v=V)
+        except VkAPIError as error:
+            print(error)
 
 
 def check_token(user_info):
@@ -274,7 +284,7 @@ def apply_pass(message):
         user_info = [message.chat.id, this_user_token, int(time.time()), 86400]
         if message.chat.id in db:
             info = db.get_info(message.chat.id)
-            start_thread(user_info, first_delay=time.time() - info[2] - info[3])
+            start_thread(user_info, first_delay=time.time() - (info[2] + info[3]))
             db.remove(message.chat.id)
         else:
             start_thread(user_info)
@@ -303,6 +313,31 @@ def send_about(message):
 @bot.message_handler(commands=['terms'])
 def send_terms(message):
     bot.send_message(message.chat.id, TERMS, parse_mode='HTML')
+
+
+@bot.message_handler(func=lambda mes: mes.reply_to_message is not None)
+def send_to_vk(message):
+    reply_to_text = message.reply_to_message.text
+    pos = reply_to_text.find('chat_id:')
+    to_chat = True
+    if pos < 0:
+        pos = reply_to_text.find('user_id:')
+        to_chat = False
+        if pos < 0:
+            bot.send_message(message.chat.id, 'Нельзя отвечать на это сообщение')
+            return -1
+
+    pos += 8
+    last_pos = reply_to_text[pos:].find('\n') + pos - 1
+    to_id = reply_to_text[pos:last_pos]
+    try:
+        if not to_chat:
+            receivers[message.chat.id].send(to_id=to_id, message=message.text)
+        else:
+            receivers[message.chat.id].send(chat_id=to_id, message=message.text)
+        bot.send_message(message.chat.id, 'Отправлено')
+    except KeyError:
+        bot.send_message(message.chat.id, 'Необходимо получать сообщения, чтобы на нх отвечать')
 
 
 if __name__ == '__main__':
