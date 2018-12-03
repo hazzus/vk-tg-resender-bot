@@ -279,7 +279,7 @@ def apply_pass(message):
     try:
         login, password = message.text.split()
         this_user_token = vk.AuthSession(app_id=CLIENT_ID, user_login=login,
-                                         user_password=password, scope='messages').access_token
+                                         user_password=password, scope='messages,offline').access_token
         waiting_password.remove(message.chat.id)
         user_info = [message.chat.id, this_user_token, int(time.time()), 86400]
         if message.chat.id in db:
