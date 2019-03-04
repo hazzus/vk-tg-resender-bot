@@ -1,4 +1,5 @@
 # VK to Telegram resender
+## Note: VK closed all messages section in their API. Bot cannot work anymore...
 
 **This are sources of a bot that resends messages from VK to Telegram**
 
